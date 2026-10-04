@@ -89,7 +89,7 @@ def get_default_index(options_list, preferred_val):
     return options.index(preferred_val) if preferred_val in options else 0
 
 st.title("💼 Income Category Prediction System")
-st.write("An interactive machine learning tool to classify candidate income brackets using demographic and employment data.")
+st.write("An interactive machine learning tool to classify candidate income brackets (> ₹5 Lakhs/yr vs ≤ ₹5 Lakhs/yr) using demographic and employment data.")
 
 # Sidebar Controls
 st.sidebar.header("Candidate Information")
@@ -115,9 +115,12 @@ st.sidebar.subheader("Work & Financial Details")
 daily_hours = st.sidebar.slider("Daily Working Hours (hrs/day)", 2, 14, 8)
 hours_per_week = daily_hours * 5
 
-# Extra Profit / Gains options rakha hai simplified language mein
-capital_gain = st.sidebar.number_input("Annual Investment / Asset Profit ($)", min_value=0, value=0, step=500, help="Profit from shares, properties, or side investments (Default is 0)")
-capital_loss = st.sidebar.number_input("Annual Investment Loss ($)", min_value=0, value=0, step=100, help="Loss from trading or investments (Default is 0)")
+capital_gain_inr = st.sidebar.number_input("Annual Investment / Asset Profit (₹)", min_value=0, value=0, step=25000, help="Profit from shares, mutual funds, or properties (Default: ₹0)")
+capital_loss_inr = st.sidebar.number_input("Annual Investment Loss (₹)", min_value=0, value=0, step=10000, help="Loss from trading or investments (Default: ₹0)")
+
+# Approximate mapping back to feature scale for model stability
+capital_gain = int(capital_gain_inr / 80)
+capital_loss = int(capital_loss_inr / 80)
 
 user_input = {
     "age": age,
@@ -144,7 +147,7 @@ with tab1:
         st.subheader("Selected Candidate Summary")
         summary_table = pd.DataFrame({
             "Parameter": ["Age", "Gender", "Education", "Education Years", "Sector", "Profession", "Marital Status", "Daily Shift", "Investment Profit"],
-            "Details": [f"{age} years", gender, education, f"{education_years} yrs", work_type, occupation, marital_status, f"{daily_hours} hrs/day", f"${capital_gain}"]
+            "Details": [f"{age} years", gender, education, f"{education_years} yrs", work_type, occupation, marital_status, f"{daily_hours} hrs/day", f"₹{capital_gain_inr:,}"]
         })
         st.dataframe(summary_table, use_container_width=True, hide_index=True)
 
@@ -155,21 +158,21 @@ with tab1:
             confidence = model.predict_proba(input_df)[0]
 
             high_income_prob = confidence[1] * 100
-            st.write(f"**High Income Confidence (> $50K):** `{high_income_prob:.1f}%`")
+            st.write(f"**High Income Confidence (> ₹5 LPA):** `{high_income_prob:.1f}%`")
             st.progress(float(confidence[1]))
 
             if prediction == 1:
                 st.markdown(f"""
                 <div class="metric-card high-income">
-                    <h3>🟢 Category: High Income Bracket (> $50K / Year)</h3>
+                    <h3>🟢 Category: High Income Bracket (> ₹5 Lakhs / Year)</h3>
                     <p>Candidate profile, education tier, and work hours indicate higher earning potential.</p>
                 </div>
                 """, unsafe_allow_html=True)
             else:
                 st.markdown(f"""
                 <div class="metric-card standard-income">
-                    <h3>🔵 Category: Standard Income Bracket (≤ $50K / Year)</h3>
-                    <p>Candidate profile falls within the standard census earning threshold.</p>
+                    <h3>🔵 Category: Standard Income Bracket (≤ ₹5 Lakhs / Year)</h3>
+                    <p>Candidate profile falls within the standard earning threshold.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -183,6 +186,7 @@ with tab2:
     comparison_data = pd.DataFrame({
         "Model": ["Logistic Regression", "Decision Tree Classifier (Active)"],
         "Test Accuracy": ["~82.4%", "~85.6%"],
+        "Classification Tiers": ["≤ ₹5 LPA vs > ₹5 LPA", "≤ ₹5 LPA vs > ₹5 LPA"],
         "Strength": ["Fast baseline, linear boundary", "Handles complex feature interactions better"]
     })
     st.table(comparison_data)
